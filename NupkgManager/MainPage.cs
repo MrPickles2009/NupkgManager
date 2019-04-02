@@ -483,14 +483,14 @@ namespace NupkgManager
             }
         }
 
-        private void CmdTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
+        private async void CmdTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
             Task finishedBuildingTask = Task.Factory.StartNew(() =>
             {
                 FinishedBuilding();
             });
 
-            finishedBuildingTask.Wait();
+            await finishedBuildingTask;
             DeletePushedPackages();
         }
     }
