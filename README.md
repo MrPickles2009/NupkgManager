@@ -6,7 +6,7 @@
 	<a href="https://github.com/MrPickles2009/NupkgManager" rel="nofollow">
 		<img src="https://img.shields.io/badge/build-passing-brightgreen.svg" alt="Build Status">
 	</a>
-  <a href="https://github.com/MrPickles2009/MrPickles2009/blob/master/LICENSE">
+  <a href="https://github.com/MrPickles2009/NupkgManager/blob/master/LICENSE">
 		<img src="https://img.shields.io/github/license/MrPickles2009/NupkgManager.svg" alt="license">
 	</a>
 </p>
