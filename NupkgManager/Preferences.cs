@@ -41,7 +41,7 @@ namespace NupkgManager
         private void prefBrowseButton_Click(object sender, EventArgs e)
         {
             FolderBrowserDialog fbd = new FolderBrowserDialog();
-            fbd.RootFolder = Environment.SpecialFolder.UserProfile;
+            fbd.RootFolder = Environment.SpecialFolder.MyComputer;
             fbd.SelectedPath = userProfile;
             fbd.Description = "Select default packages folder:";
             fbd.ShowNewFolderButton = false;

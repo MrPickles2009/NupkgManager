@@ -289,7 +289,7 @@ namespace NupkgManager
 
             if (Properties.Settings.Default.DefaultSearchFolder == "")
             {
-                fbd.RootFolder = Environment.SpecialFolder.UserProfile;
+                fbd.RootFolder = Environment.SpecialFolder.MyComputer;
                 fbd.SelectedPath = userProfile;
             }
             else
@@ -298,7 +298,6 @@ namespace NupkgManager
             }
 
             fbd.Description = "Select packages folder:";
-            fbd.ShowNewFolderButton = false;
 
             if (fbd.ShowDialog() == DialogResult.OK)
             {
