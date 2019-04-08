@@ -35,6 +35,9 @@ This extension allows any developer to easily build new/updated versions of thei
 Visual Studio 2017 and above
 
 ## Release notes
+**Version 1.1.1**
+- FolderBrowserDialog root folder is now MyComputer
+
 **Version 1.1.0**
 - Added support for Visual Studio 2019
 
