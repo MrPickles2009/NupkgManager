@@ -1,6 +1,7 @@
 ﻿using IIHS.Tools;
 using Microsoft.VisualBasic;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -26,7 +27,8 @@ namespace NupkgManager
             .LastIndexOf("\\") + 1).Replace("\\", "/") + "nuget.exe";
         string userProfile = Environment.ExpandEnvironmentVariables(@"%USERPROFILE%\source\repos\");
         private StringBuilder outputBuilder;
-        System.Timers.Timer cmdTimer = new System.Timers.Timer(2000);
+        System.Timers.Timer cmdBuildTimer = new System.Timers.Timer(2000);
+        System.Timers.Timer cmdPushTimer = new System.Timers.Timer(5000);
         ProgressDialogForm progressDialogForm;
 
         public MainPage()
@@ -35,8 +37,10 @@ namespace NupkgManager
             progressDialogForm = new ProgressDialogForm("Searching ...");
             commandPromptOutputTextBox.ReadOnly = true;
 
-            cmdTimer.Elapsed += CmdTimer_Elapsed;
-            cmdTimer.AutoReset = false;
+            cmdBuildTimer.Elapsed += CmdBuildTimer_Elapsed;
+            cmdBuildTimer.AutoReset = false;
+            cmdPushTimer.Elapsed += CmdPushTimer_Elapsed;
+            cmdPushTimer.AutoReset = false;
 
             if (Properties.Settings.Default.DefaultSearchFolder == "")
             {
@@ -46,6 +50,11 @@ namespace NupkgManager
             {
                 packagesPathTextBox.Text = Properties.Settings.Default.DefaultSearchFolder;
             }
+        }
+
+        private void CmdPushTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
+        {
+            this.DeletePushedPackages();
         }
 
         protected override async void OnLoad(EventArgs e)
@@ -189,15 +198,26 @@ namespace NupkgManager
             DeletePushedPackages();
         }
 
-        private void CommandPrompt_OutputUpdated(object sender, EventArgs<string> e)
+        private void CommandPromptBuild_OutputUpdated(object sender, EventArgs<string> e)
         {
-            cmdTimer.Stop();
-            cmdTimer.Start();
+            cmdBuildTimer.Stop();
+            cmdBuildTimer.Start();
 
             if (outputBuilder == null)
                 outputBuilder = new StringBuilder();
                 outputBuilder.AppendLine(e.Data);
                 WriteTextSafe(outputBuilder.ToString());
+        }
+
+        private void CommandPromptPush_OutputUpdated(object sender, EventArgs<string> e)
+        {
+            cmdPushTimer.Stop();
+            cmdPushTimer.Start();
+
+            if (outputBuilder == null)
+                outputBuilder = new StringBuilder();
+            outputBuilder.AppendLine(e.Data);
+            WriteTextSafe(outputBuilder.ToString());
         }
 
         private delegate void SafeCallDelegate(string text);
@@ -341,22 +361,45 @@ namespace NupkgManager
             }
         }
 
+        protected List<string> PackagesToBuild = new List<string>();
+
         public void BuildPackages()
         {
             progressDialogForm.UpdateMessage("Building ...");
             progressDialogForm.Show(this);
+            
             foreach (CheckedListBoxItem file in nuspecSearchResults.CheckedItems)
             {
-                IncrementVersionNumber(file.Tag);
-                commandPrompt = new CommandPrompt(true);
-
-                string fileNoExt = file.Tag.Substring(0, file.Tag.LastIndexOf(".") + 1).Replace("\\", "/");
-                string outputDir = fileNoExt.Substring(0, fileNoExt.LastIndexOf("/") + 1) + "bin/Release";
-                string buildPackageCmd = $"\"{nugetExe}\" pack \"{fileNoExt}csproj\" -Build -Prop Configuration=Release -OutputDirectory \"{outputDir}\" -IncludeReferencedProjects";
-                commandPrompt.ExecuteCommand(buildPackageCmd);
-
-                commandPrompt.OutputUpdated += CommandPrompt_OutputUpdated;
+                PackagesToBuild.Add(file.Tag);
             }
+
+            BuildNextPackage();
+        }
+
+        public async void BuildNextPackage()
+        {
+            if (!PackagesToBuild.Any())
+            {
+                Task finishedBuildingTask = Task.Factory.StartNew(() =>
+                {
+                    FinishedBuilding();
+                });
+
+                await finishedBuildingTask;
+                return;
+            }
+
+            var path = PackagesToBuild.First();
+            PackagesToBuild.Remove(path);
+
+            IncrementVersionNumber(path);
+            commandPrompt = new CommandPrompt(true);
+
+            string fileNoExt = path.Substring(0, path.LastIndexOf(".") + 1).Replace("\\", "/");
+            string outputDir = fileNoExt.Substring(0, fileNoExt.LastIndexOf("/") + 1) + "bin/Release";
+            string buildPackageCmd = $"\"{nugetExe}\" pack \"{fileNoExt}csproj\" -Build -Prop Configuration=Release -OutputDirectory \"{outputDir}\" -IncludeReferencedProjects";
+            commandPrompt.ExecuteCommand(buildPackageCmd);
+            commandPrompt.OutputUpdated += CommandPromptBuild_OutputUpdated;
         }
 
         public void IncrementVersionNumber(string dirToNuspecFile)
@@ -480,7 +523,7 @@ namespace NupkgManager
                     commandPrompt.ExecuteCommand(key);
                     commandPrompt.ExecuteCommand("");
 
-                    commandPrompt.OutputUpdated += CommandPrompt_OutputUpdated;
+                    commandPrompt.OutputUpdated += CommandPromptPush_OutputUpdated;
                 }
             }
         }
@@ -544,15 +587,9 @@ namespace NupkgManager
             }
         }
 
-        private async void CmdTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
+        private void CmdBuildTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
-            Task finishedBuildingTask = Task.Factory.StartNew(() =>
-            {
-                FinishedBuilding();
-            });
-
-            await finishedBuildingTask;
-            DeletePushedPackages();
+            this.BuildNextPackage();
         }
     }
 }
