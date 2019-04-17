@@ -364,22 +364,77 @@ namespace NupkgManager
             string fileNoExt = dirToNuspecFile.Substring(0, dirToNuspecFile.LastIndexOf(".") + 1).Replace("\\", "/");
             string assemblyInfoDir = fileNoExt.Substring(0, fileNoExt.LastIndexOf("/") + 1) + "Properties/";
             string assemblyInfoFile = File.ReadAllText(assemblyInfoDir + "AssemblyInfo.cs");
-            Regex rx = new Regex(@"AssemblyInformationalVersion.\""(\d{1,2})\.(\d{1,2})\.(\d{1,2})\""");
+            Regex rx;
+            Match match;
+            int majorNumber;
+            int minorNumber;
+            int buildNumber;
+            string betaInfo;
+            string versionNumberReplaced;
 
-            Match match = rx.Match(assemblyInfoFile);
-            int majorNumber = int.Parse(match.Groups[1].Value);
-            int minorNumber = int.Parse(match.Groups[2].Value);
-            int buildNumber = int.Parse(match.Groups[3].Value);
+            try
+            {
+                rx = new Regex("AssemblyInformationalVersion");
+                match = rx.Match(assemblyInfoFile);
 
-            if (majorCheckBox.Checked) majorNumber++;
-            if (minorCheckBox.Checked) minorNumber++;
-            if (buildNumberCheckBox.Checked) buildNumber++;
-            if (majorVersionTo0ToolStripMenuItem.Checked) majorNumber = 0;
-            if (minorVersionTo0ToolStripMenuItem.Checked) minorNumber = 0;
-            if (buildNumberTo0ToolStripMenuItem.Checked) buildNumber = 0;
+                if (match.Value == "AssemblyInformationalVersion")
+                {
+                    Regex rx1 = new Regex(@"^[^//].*AssemblyInformationalVersion.\""(\d{0,2})\.(\d{0,2})\.(\d{0,2})(.{0,128})\""", RegexOptions.Multiline | RegexOptions.ECMAScript);
+                    Match match1 = rx1.Match(assemblyInfoFile);
 
-            string versionNumberReplaced = Regex.Replace(assemblyInfoFile, rx.ToString(), $"AssemblyInformationalVersion(\"{majorNumber}.{minorNumber}.{buildNumber}\"");
-            File.WriteAllText(assemblyInfoDir + "AssemblyInfo.cs", versionNumberReplaced);
+                    majorNumber = int.Parse(match1.Groups[1].Value);
+                    minorNumber = int.Parse(match1.Groups[2].Value);
+                    buildNumber = int.Parse(match1.Groups[3].Value);
+                    betaInfo = match1.Groups[4].Value;
+
+                    if (majorCheckBox.Checked) majorNumber++;
+                    if (minorCheckBox.Checked) minorNumber++;
+                    if (buildNumberCheckBox.Checked) buildNumber++;
+                    if (majorVersionTo0ToolStripMenuItem.Checked) majorNumber = 0;
+                    if (minorVersionTo0ToolStripMenuItem.Checked) minorNumber = 0;
+                    if (buildNumberTo0ToolStripMenuItem.Checked) buildNumber = 0;
+
+                    versionNumberReplaced = assemblyInfoFile.Replace($@"AssemblyInformationalVersion(""{match1.Groups[1].Value}.{match1.Groups[2].Value}.{match1.Groups[3].Value}{match1.Groups[4].Value}""", $@"AssemblyInformationalVersion(""{majorNumber}.{minorNumber}.{buildNumber}{betaInfo}""");
+                    //versionNumberReplaced = Regex.Replace(assemblyInfoFile, rx1.ToString(), $@"[assembly: AssemblyInformationalVersion(""{majorNumber}.{minorNumber}.{buildNumber}{betaInfo}""");
+                    File.WriteAllText(assemblyInfoDir + "AssemblyInfo.cs", versionNumberReplaced);
+                }
+                else
+                {
+                    Regex rx2 = new Regex(@"\""(\d{0,2})\.(\d{0,2})\.(\d{0,2})(.{0,128})\""", RegexOptions.Multiline);
+                    Match match2 = rx2.Match(assemblyInfoFile);
+
+                    majorNumber = int.Parse(match2.Groups[1].Value);
+                    minorNumber = int.Parse(match2.Groups[2].Value);
+                    buildNumber = int.Parse(match2.Groups[3].Value.Replace("*","0"));
+                    betaInfo = match2.Groups[4].Value;
+
+                    if (String.IsNullOrEmpty(match2.Groups[3].Value)) buildNumber = 0;
+
+                    try
+                    {
+                        if (majorCheckBox.Checked) majorNumber++;
+                        if (minorCheckBox.Checked) minorNumber++;
+                        if (buildNumberCheckBox.Checked) buildNumber++;
+                    }
+                    catch (Exception e)
+                    {
+                        MessageBox.Show("Unrecognised version number in Assembly info: " + e, "Assembly Info Error",
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                    
+                    if (majorVersionTo0ToolStripMenuItem.Checked) majorNumber = 0;
+                    if (minorVersionTo0ToolStripMenuItem.Checked) minorNumber = 0;
+                    if (buildNumberTo0ToolStripMenuItem.Checked) buildNumber = 0;
+
+                    versionNumberReplaced = Regex.Replace(assemblyInfoFile, rx2.ToString(), $@"""{majorNumber}.{minorNumber}.{buildNumber}{betaInfo}""");
+                    File.WriteAllText(assemblyInfoDir + "AssemblyInfo.cs", versionNumberReplaced);
+                }
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show("An error occured while attempting to build: " + e, "Build Error",
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         public void PushPackages()
@@ -434,7 +489,14 @@ namespace NupkgManager
         {
             foreach (CheckedListBoxItem file in nupkgSearchResults.CheckedItems)
             {
-                File.Delete(file.Tag);
+                try
+                {
+                    File.Delete(file.Tag);
+                }
+                catch (Exception e)
+                {
+                    MessageBox.Show("Error while removing pushed packages: " + e);
+                }
             }
 
             ResetButtonsCheckboxShowProgressDialog(packagesPathTextBox.Text);
