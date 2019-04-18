@@ -209,15 +209,24 @@ namespace NupkgManager
                 WriteTextSafe(outputBuilder.ToString());
         }
 
-        private void CommandPromptPush_OutputUpdated(object sender, EventArgs<string> e)
+        private void CommandPromptPush_OutputUpdated(object sender, EventArgs<string> eventArgs)
         {
             cmdPushTimer.Stop();
             cmdPushTimer.Start();
 
             if (outputBuilder == null)
                 outputBuilder = new StringBuilder();
-            outputBuilder.AppendLine(e.Data);
-            WriteTextSafe(outputBuilder.ToString());
+            outputBuilder.AppendLine(eventArgs.Data);
+            try
+            {
+                WriteTextSafe(outputBuilder.ToString());
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show("An error occured while outputting command prompt: " + e, "Console Output Error",
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            
         }
 
         private delegate void SafeCallDelegate(string text);
@@ -407,8 +416,6 @@ namespace NupkgManager
             string fileNoExt = dirToNuspecFile.Substring(0, dirToNuspecFile.LastIndexOf(".") + 1).Replace("\\", "/");
             string assemblyInfoDir = fileNoExt.Substring(0, fileNoExt.LastIndexOf("/") + 1) + "Properties/";
             string assemblyInfoFile = File.ReadAllText(assemblyInfoDir + "AssemblyInfo.cs");
-            Regex rx;
-            Match match;
             int majorNumber;
             int minorNumber;
             int buildNumber;
@@ -417,8 +424,8 @@ namespace NupkgManager
 
             try
             {
-                rx = new Regex("AssemblyInformationalVersion");
-                match = rx.Match(assemblyInfoFile);
+                Regex rx = new Regex("AssemblyInformationalVersion");
+                Match match = rx.Match(assemblyInfoFile);
 
                 if (match.Value == "AssemblyInformationalVersion")
                 {
