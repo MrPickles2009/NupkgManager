@@ -33,7 +33,7 @@ This extension allows any developer to easily build new/updated versions of thei
 
 <img src="https://raw.githubusercontent.com/MrPickles2009/NupkgManager/master/Images/1.png" height="512px">
 
-2. Select nuget projects use wish to build/pack and press 'Build'. Then select the desired packages you wish to push to the NuGet repository and press 'Push'
+2. Select nuget projects you wish to build/pack and press 'Build'. Then select the desired packages you wish to push to the NuGet repository and press 'Push'
 
 <img src="https://raw.githubusercontent.com/MrPickles2009/NupkgManager/master/Images/2.png" height="512px">
 
